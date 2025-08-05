@@ -27,9 +27,10 @@ function handleImageUpload(inputId, previewId, uploadAreaId, removeBtnId) {
         return;
       }
       
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+      // Validate file type - support images including GIFs
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPG, PNG, GIF, or WebP)');
         input.value = '';
         return;
       }
@@ -38,6 +39,37 @@ function handleImageUpload(inputId, previewId, uploadAreaId, removeBtnId) {
       reader.onload = function(e) {
         const img = preview.querySelector('img');
         img.src = e.target.result;
+        
+        // Add special styling for GIFs
+        if (file.type === 'image/gif') {
+          img.style.border = '2px solid var(--color-primary)';
+          img.style.borderRadius = 'var(--radius-base)';
+          // Add a small GIF indicator
+          const gifIndicator = document.createElement('div');
+          gifIndicator.className = 'gif-indicator';
+          gifIndicator.textContent = 'GIF';
+          gifIndicator.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--color-primary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+          `;
+          preview.style.position = 'relative';
+          preview.appendChild(gifIndicator);
+        } else {
+          // Remove GIF indicator if it exists
+          const existingIndicator = preview.querySelector('.gif-indicator');
+          if (existingIndicator) {
+            existingIndicator.remove();
+          }
+        }
+        
         preview.style.display = 'block';
         uploadArea.style.display = 'none';
       };
@@ -50,6 +82,12 @@ function handleImageUpload(inputId, previewId, uploadAreaId, removeBtnId) {
     input.value = '';
     preview.style.display = 'none';
     uploadArea.style.display = 'flex';
+    
+    // Remove GIF indicator if it exists
+    const gifIndicator = preview.querySelector('.gif-indicator');
+    if (gifIndicator) {
+      gifIndicator.remove();
+    }
   });
 }
 
@@ -229,9 +267,20 @@ function renderFeedback() {
   const feedbackHtml = appState.feedback
     .map(item => {
       const tagClass = item.tag.toLowerCase().replace(/\s+/g, '-');
-      const imageHtml = item.image_url 
-        ? `<div class="feedback-image-container"><img src="${item.image_url}" alt="Feedback image" class="feedback-image"></div>`
-        : '';
+      let imageHtml = '';
+      
+      if (item.image_url) {
+        // Check if it's a GIF by looking at the URL or data
+        const isGif = item.image_url.includes('data:image/gif') || 
+                     (item.image_url.includes('gif') && !item.image_url.includes('gifv'));
+        
+        imageHtml = `
+          <div class="feedback-image-container">
+            <img src="${item.image_url}" alt="Feedback image" class="feedback-image ${isGif ? 'gif-image' : ''}">
+            ${isGif ? '<div class="gif-badge">GIF</div>' : ''}
+          </div>
+        `;
+      }
       
       return `
         <div class="feedback-item">
@@ -267,9 +316,20 @@ function renderShowcase() {
       const projectLinkHtml = item.project_link 
         ? `<a href="${item.project_link}" target="_blank" rel="noopener noreferrer" class="project-link">View Project</a>`
         : '';
-      const imageHtml = item.image_url 
-        ? `<div class="contributor-image-container"><img src="${item.image_url}" alt="Contributor image" class="contributor-image"></div>`
-        : '';
+      
+      let imageHtml = '';
+      if (item.image_url) {
+        // Check if it's a GIF by looking at the URL or data
+        const isGif = item.image_url.includes('data:image/gif') || 
+                     (item.image_url.includes('gif') && !item.image_url.includes('gifv'));
+        
+        imageHtml = `
+          <div class="contributor-image-container">
+            <img src="${item.image_url}" alt="Contributor image" class="contributor-image ${isGif ? 'gif-image' : ''}">
+            ${isGif ? '<div class="gif-badge">GIF</div>' : ''}
+          </div>
+        `;
+      }
       
       return `
         <div class="showcase-item">

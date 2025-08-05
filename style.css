@@ -901,14 +901,48 @@ select.form-control {
 .upload-hint {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  margin-bottom: var(--space-8);
+}
+
+.upload-features {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-top: var(--space-8);
+}
+
+.feature-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-secondary);
+  color: var(--color-text);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--color-border);
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.feature-tag:hover {
+  background: var(--color-secondary-hover);
+  transform: translateY(-1px);
 }
 
 .image-preview {
   position: relative;
   margin-top: var(--space-12);
-  border-radius: var(--radius-base);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  background: var(--color-secondary);
+  border: 1px solid var(--color-card-border);
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.image-preview:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .image-preview img {
@@ -988,9 +1022,39 @@ select.form-control {
 .feedback-image-container,
 .contributor-image-container {
   margin-top: var(--space-12);
-  border-radius: var(--radius-base);
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  background: var(--color-secondary);
+  border: 1px solid var(--color-card-border);
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.feedback-image-container:hover,
+.contributor-image-container:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.gif-badge {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  background: var(--color-primary);
+  color: white;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  z-index: 10;
   box-shadow: var(--shadow-sm);
+  animation: pulse 2s infinite;
+}
+
+.gif-image {
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-base);
 }
 
 .header-title {
