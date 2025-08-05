@@ -71,4 +71,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## Community
 
-Join the Monad AI community and share your voice! 
+Join the Monad AI community and share your voice!
