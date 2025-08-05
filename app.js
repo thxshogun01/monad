@@ -547,17 +547,60 @@ function initTwitterAuth() {
       loginBtn.disabled = true;
       loginBtn.textContent = 'Getting token...';
       
-      // Get request token
+      // Get request token (mock implementation for demo)
       const requestToken = await getRequestToken();
       
-      // Generate auth URL with force_login=false to use existing session
-      const authUrl = generateAuthUrl(requestToken.oauth_token);
+      // For demo purposes, simulate the full flow
+      // In production, this would redirect to Twitter
+      console.log('Request token received:', requestToken);
       
-      // Store request token secret for later use
-      sessionStorage.setItem('oauth_token_secret', requestToken.oauth_token_secret);
-      
-      // Redirect to Twitter
-      window.location.href = authUrl;
+      // Simulate the callback flow
+      setTimeout(async () => {
+        try {
+          // Mock the callback parameters
+          const mockOAuthParams = {
+            oauth_token: requestToken.oauth_token,
+            oauth_verifier: 'mock_verifier_' + Date.now()
+          };
+          
+          // Store for callback simulation
+          sessionStorage.setItem('oauth_token_secret', requestToken.oauth_token_secret);
+          sessionStorage.setItem('mock_oauth_params', JSON.stringify(mockOAuthParams));
+          
+          // Simulate successful authentication
+          const accessToken = await getAccessToken(mockOAuthParams.oauth_token, mockOAuthParams.oauth_verifier, requestToken.oauth_token_secret);
+          const userInfo = await getUserInfo(accessToken.oauth_token, accessToken.oauth_token_secret);
+          
+          // Combine the data
+          const userData = {
+            id: accessToken.user_id,
+            screen_name: accessToken.screen_name,
+            name: userInfo.name,
+            profile_image_url: userInfo.profile_image_url_https,
+            ...userInfo
+          };
+          
+          // Store the user data
+          storeUserData(userData);
+          
+          // Clean up session storage
+          sessionStorage.removeItem('oauth_token_secret');
+          sessionStorage.removeItem('mock_oauth_params');
+          
+          // Show connected user
+          showConnectedUser(userData);
+          
+          // Reset button
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = '<svg class="twitter-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>🔒 Login with X';
+          
+        } catch (error) {
+          console.error('Error in mock authentication:', error);
+          alert('Authentication failed. Please try again.');
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = '<svg class="twitter-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>🔒 Login with X';
+        }
+      }, 2000); // Simulate 2 second delay
       
     } catch (error) {
       console.error('Error starting OAuth flow:', error);
