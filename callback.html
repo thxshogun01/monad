@@ -72,7 +72,6 @@
         </div>
     </div>
 
-    <script src="twitter-config.js"></script>
     <script>
         // Handle the OAuth 1.0a callback
         async function handleCallback() {
@@ -98,11 +97,33 @@
                     throw new Error('No token secret found');
                 }
                 
-                // Exchange request token for access token
-                const accessToken = await getAccessToken(oauth_token, oauth_verifier, oauthTokenSecret);
+                // Exchange request token for access token using server
+                const tokenResponse = await fetch('/api/twitter/access-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        oauth_token: oauth_token,
+                        oauth_verifier: oauth_verifier,
+                        oauth_token_secret: oauthTokenSecret
+                    })
+                });
                 
-                // Get user info
-                const userInfo = await getUserInfo(accessToken.oauth_token, accessToken.oauth_token_secret);
+                if (!tokenResponse.ok) {
+                    throw new Error('Failed to get access token');
+                }
+                
+                const accessToken = await tokenResponse.json();
+                
+                // Get user info using server
+                const userResponse = await fetch(`/api/twitter/user-info?oauth_token=${accessToken.oauth_token}&oauth_token_secret=${accessToken.oauth_token_secret}`);
+                
+                if (!userResponse.ok) {
+                    throw new Error('Failed to get user info');
+                }
+                
+                const userInfo = await userResponse.json();
                 
                 // Combine the data
                 const userData = {

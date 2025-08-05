@@ -547,8 +547,13 @@ function initTwitterAuth() {
       loginBtn.disabled = true;
       loginBtn.textContent = 'Getting token...';
       
-      // Get request token from Twitter
-      const requestToken = await getRequestToken();
+      // Get request token from server
+      const response = await fetch('/api/twitter/request-token');
+      if (!response.ok) {
+        throw new Error('Failed to get request token from server');
+      }
+      
+      const requestToken = await response.json();
       
       // Generate auth URL with force_login=false to use existing session
       const authUrl = generateAuthUrl(requestToken.oauth_token);
