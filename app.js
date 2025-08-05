@@ -9,6 +9,65 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
+// Image handling functions
+function handleImageUpload(inputId, previewId, uploadAreaId, removeBtnId) {
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const uploadArea = document.getElementById(uploadAreaId);
+  const removeBtn = document.getElementById(removeBtnId);
+  
+  input.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        alert('File size must be less than 5MB');
+        input.value = '';
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        input.value = '';
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = preview.querySelector('img');
+        img.src = e.target.result;
+        preview.style.display = 'block';
+        uploadArea.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  
+  // Remove image
+  removeBtn.addEventListener('click', function() {
+    input.value = '';
+    preview.style.display = 'none';
+    uploadArea.style.display = 'flex';
+  });
+}
+
+function getImageData(inputId) {
+  const input = document.getElementById(inputId);
+  const file = input.files[0];
+  if (file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        resolve(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  return null;
+}
+
 function formatRelativeTime(timestamp) {
   const now = new Date();
   const past = new Date(timestamp);
@@ -170,6 +229,10 @@ function renderFeedback() {
   const feedbackHtml = appState.feedback
     .map(item => {
       const tagClass = item.tag.toLowerCase().replace(/\s+/g, '-');
+      const imageHtml = item.image_url 
+        ? `<div class="feedback-image-container"><img src="${item.image_url}" alt="Feedback image" class="feedback-image"></div>`
+        : '';
+      
       return `
         <div class="feedback-item">
           <div class="feedback-header">
@@ -177,6 +240,7 @@ function renderFeedback() {
             <span class="timestamp">${formatRelativeTime(item.created_at)}</span>
           </div>
           <div class="feedback-message">${item.message}</div>
+          ${imageHtml}
         </div>
       `;
     })
@@ -203,6 +267,9 @@ function renderShowcase() {
       const projectLinkHtml = item.project_link 
         ? `<a href="${item.project_link}" target="_blank" rel="noopener noreferrer" class="project-link">View Project</a>`
         : '';
+      const imageHtml = item.image_url 
+        ? `<div class="contributor-image-container"><img src="${item.image_url}" alt="Contributor image" class="contributor-image"></div>`
+        : '';
       
       return `
         <div class="showcase-item">
@@ -213,6 +280,7 @@ function renderShowcase() {
             <span class="timestamp">${formatRelativeTime(item.created_at)}</span>
           </div>
           <div class="contribution-text">${item.contribution}</div>
+          ${imageHtml}
           ${projectLinkHtml}
         </div>
       `;
@@ -256,6 +324,9 @@ async function handleFeedbackSubmit(e) {
   showLoading();
   
   try {
+    // Get image data if uploaded
+    const imageData = await getImageData('feedback-image');
+    
     // Insert feedback into Supabase
     const { data, error } = await supabase
       .from('feedback')
@@ -263,6 +334,7 @@ async function handleFeedbackSubmit(e) {
         {
           message: message,
           tag: tag,
+          image_url: imageData,
           created_at: new Date().toISOString()
         }
       ])
@@ -278,6 +350,10 @@ async function handleFeedbackSubmit(e) {
     // Reset form
     form.reset();
     updateCharacterCount('feedback-message', 'feedback-char-count');
+    
+    // Reset image upload
+    document.getElementById('feedback-image-preview').style.display = 'none';
+    document.getElementById('feedback-upload-area').style.display = 'flex';
     
     // Show success message
     showSuccessModal('Success!', 'Your voice has been heard!');
@@ -330,6 +406,9 @@ async function handleShowcaseSubmit(e) {
   showLoading();
   
   try {
+    // Get image data if uploaded
+    const imageData = await getImageData('showcase-image');
+    
     // Insert contributor into Supabase
     const { data, error } = await supabase
       .from('contributors')
@@ -338,6 +417,7 @@ async function handleShowcaseSubmit(e) {
           x_handle: xHandle,
           contribution: contribution,
           project_link: projectLink || null,
+          image_url: imageData,
           created_at: new Date().toISOString()
         }
       ])
@@ -353,6 +433,10 @@ async function handleShowcaseSubmit(e) {
     // Reset form
     form.reset();
     updateCharacterCount('contribution', 'contribution-char-count');
+    
+    // Reset image upload
+    document.getElementById('showcase-image-preview').style.display = 'none';
+    document.getElementById('showcase-upload-area').style.display = 'flex';
     
     // Show success message
     showSuccessModal('Welcome!', 'Welcome to the community!');
@@ -415,6 +499,10 @@ async function initApp() {
       }
     });
   });
+  
+  // Initialize image upload handlers
+  handleImageUpload('feedback-image', 'feedback-image-preview', 'feedback-upload-area', 'feedback-remove-image');
+  handleImageUpload('showcase-image', 'showcase-image-preview', 'showcase-upload-area', 'showcase-remove-image');
   
   // Keyboard navigation
   document.addEventListener('keydown', (e) => {

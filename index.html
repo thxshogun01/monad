@@ -72,6 +72,34 @@
                                 </select>
                             </div>
 
+                            <div class="form-group">
+                                <label class="form-label" for="feedback-image">Add Image (Optional)</label>
+                                <div class="image-upload-container">
+                                    <input 
+                                        type="file" 
+                                        id="feedback-image" 
+                                        class="image-upload-input"
+                                        accept="image/*"
+                                        data-max-size="5"
+                                    >
+                                    <div class="image-upload-area" id="feedback-upload-area">
+                                        <div class="upload-placeholder">
+                                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7,10 12,15 17,10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                            <p>Click to upload image</p>
+                                            <span class="upload-hint">Max 5MB, JPG, PNG, GIF</span>
+                                        </div>
+                                    </div>
+                                    <div class="image-preview" id="feedback-image-preview" style="display: none;">
+                                        <img id="feedback-preview-img" alt="Preview">
+                                        <button type="button" class="remove-image-btn" id="feedback-remove-image">×</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <button type="submit" class="btn btn--primary btn--full-width">
                                 Share Your Voice
                             </button>
@@ -129,6 +157,34 @@
                                     class="form-control"
                                     placeholder="https://your-project.com (optional)"
                                 >
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="showcase-image">Add Image (Optional)</label>
+                                <div class="image-upload-container">
+                                    <input 
+                                        type="file" 
+                                        id="showcase-image" 
+                                        class="image-upload-input"
+                                        accept="image/*"
+                                        data-max-size="5"
+                                    >
+                                    <div class="image-upload-area" id="showcase-upload-area">
+                                        <div class="upload-placeholder">
+                                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7,10 12,15 17,10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                            <p>Click to upload image</p>
+                                            <span class="upload-hint">Max 5MB, JPG, PNG, GIF</span>
+                                        </div>
+                                    </div>
+                                    <div class="image-preview" id="showcase-image-preview" style="display: none;">
+                                        <img id="showcase-preview-img" alt="Preview">
+                                        <button type="button" class="remove-image-btn" id="showcase-remove-image">×</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <button type="submit" class="btn btn--primary btn--full-width">

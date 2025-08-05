@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS feedback (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   message TEXT NOT NULL,
   tag TEXT NOT NULL CHECK (tag IN ('Recognition', 'Concerns', 'Ideas', 'Community Fun')),
+  image_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS contributors (
   x_handle TEXT NOT NULL,
   contribution TEXT NOT NULL,
   project_link TEXT,
+  image_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
