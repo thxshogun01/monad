@@ -29,11 +29,26 @@ function generateTimestamp() {
   return Math.floor(Date.now() / 1000).toString();
 }
 
-// Simplified OAuth signature generation for browser
-function createOAuthSignature(method, url, params, consumerSecret, tokenSecret = '') {
-  // For browser compatibility, we'll use a simplified approach
-  // In production, you should use a proper crypto library or server-side implementation
+// Create HMAC-SHA1 signature using Web Crypto API
+async function createHMACSHA1Signature(message, key) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(key);
+  const messageData = encoder.encode(message);
   
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+}
+
+// Create OAuth signature
+async function createOAuthSignature(method, url, params, consumerSecret, tokenSecret = '') {
   // Sort parameters alphabetically
   const sortedParams = Object.keys(params).sort().map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
   
@@ -47,14 +62,12 @@ function createOAuthSignature(method, url, params, consumerSecret, tokenSecret =
   // Create signing key
   const signingKey = encodeURIComponent(consumerSecret) + '&' + encodeURIComponent(tokenSecret);
   
-  // For demo purposes, we'll use a simple hash
-  // In production, use proper HMAC-SHA1
-  const hash = btoa(signatureBaseString + signingKey).replace(/[^a-zA-Z0-9]/g, '');
-  return hash;
+  // Generate HMAC-SHA1 signature
+  return await createHMACSHA1Signature(signatureBaseString, signingKey);
 }
 
 // Generate OAuth header
-function generateOAuthHeader(method, url, params, consumerSecret, tokenSecret = '') {
+async function generateOAuthHeader(method, url, params, consumerSecret, tokenSecret = '') {
   const oauthParams = {
     oauth_consumer_key: TWITTER_CONFIG.CONSUMER_KEY,
     oauth_nonce: generateNonce(),
@@ -65,7 +78,7 @@ function generateOAuthHeader(method, url, params, consumerSecret, tokenSecret = 
   };
   
   // Add signature
-  oauthParams.oauth_signature = createOAuthSignature(method, url, oauthParams, consumerSecret, tokenSecret);
+  oauthParams.oauth_signature = await createOAuthSignature(method, url, oauthParams, consumerSecret, tokenSecret);
   
   // Create Authorization header
   const authHeader = 'OAuth ' + Object.keys(oauthParams)
@@ -76,22 +89,40 @@ function generateOAuthHeader(method, url, params, consumerSecret, tokenSecret = 
   return authHeader;
 }
 
-// For demo purposes, we'll use a mock implementation
-// In production, you should implement proper OAuth 1.0a
+// Get request token
 async function getRequestToken() {
-  // Mock implementation for demo
-  // In production, implement proper OAuth 1.0a signature generation
-  console.log('Getting request token...');
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Return mock data
-  return {
-    oauth_token: 'mock_oauth_token_' + Date.now(),
-    oauth_token_secret: 'mock_oauth_token_secret_' + Date.now(),
-    oauth_callback_confirmed: true
+  const params = {
+    oauth_callback: TWITTER_CONFIG.CALLBACK_URL
   };
+  
+  const authHeader = await generateOAuthHeader('POST', TWITTER_CONFIG.REQUEST_TOKEN_URL, params, TWITTER_CONFIG.CONSUMER_SECRET);
+  
+  try {
+    const response = await fetch(TWITTER_CONFIG.REQUEST_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Request token error:', errorText);
+      throw new Error(`Failed to get request token: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    const params = new URLSearchParams(text);
+    
+    return {
+      oauth_token: params.get('oauth_token'),
+      oauth_token_secret: params.get('oauth_token_secret'),
+      oauth_callback_confirmed: params.get('oauth_callback_confirmed') === 'true'
+    };
+  } catch (error) {
+    console.error('Error getting request token:', error);
+    throw error;
+  }
 }
 
 // Generate authentication URL
@@ -104,42 +135,69 @@ function generateAuthUrl(oauthToken) {
   return `${TWITTER_CONFIG.AUTHENTICATE_URL}?${params.toString()}`;
 }
 
-// Mock access token exchange
+// Exchange request token for access token
 async function getAccessToken(oauthToken, oauthVerifier, oauthTokenSecret) {
-  // Mock implementation for demo
-  console.log('Exchanging for access token...');
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Return mock data
-  return {
-    oauth_token: 'mock_access_token_' + Date.now(),
-    oauth_token_secret: 'mock_access_token_secret_' + Date.now(),
-    user_id: '123456789',
-    screen_name: 'demo_user'
+  const params = {
+    oauth_token: oauthToken,
+    oauth_verifier: oauthVerifier
   };
+  
+  const authHeader = await generateOAuthHeader('POST', TWITTER_CONFIG.ACCESS_TOKEN_URL, params, TWITTER_CONFIG.CONSUMER_SECRET, oauthTokenSecret);
+  
+  try {
+    const response = await fetch(TWITTER_CONFIG.ACCESS_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Access token error:', errorText);
+      throw new Error(`Failed to get access token: ${response.status}`);
+    }
+    
+    const text = await response.text();
+    const params = new URLSearchParams(text);
+    
+    return {
+      oauth_token: params.get('oauth_token'),
+      oauth_token_secret: params.get('oauth_token_secret'),
+      user_id: params.get('user_id'),
+      screen_name: params.get('screen_name')
+    };
+  } catch (error) {
+    console.error('Error getting access token:', error);
+    throw error;
+  }
 }
 
-// Mock user info
+// Get user info
 async function getUserInfo(oauthToken, oauthTokenSecret) {
-  // Mock implementation for demo
-  console.log('Getting user info...');
+  const params = {};
   
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  const authHeader = await generateOAuthHeader('GET', TWITTER_CONFIG.USER_INFO_URL, params, TWITTER_CONFIG.CONSUMER_SECRET, oauthTokenSecret);
   
-  // Return mock data
-  return {
-    id: 123456789,
-    name: 'Demo User',
-    screen_name: 'demo_user',
-    profile_image_url_https: 'https://pbs.twimg.com/profile_images/1234567890/demo_400x400.jpg',
-    description: 'Demo user for testing',
-    followers_count: 100,
-    friends_count: 50,
-    statuses_count: 1000
-  };
+  try {
+    const response = await fetch(`${TWITTER_CONFIG.USER_INFO_URL}?include_entities=true&skip_status=true`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('User info error:', errorText);
+      throw new Error(`Failed to get user info: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    throw error;
+  }
 }
 
 // Check if we're on the callback page
