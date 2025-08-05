@@ -1,4 +1,4 @@
-// Application state - simulating database storage
+// Application state - will be replaced with Supabase data
 let appState = {
   feedback: [],
   contributors: []
@@ -117,6 +117,43 @@ function switchTab(tabName) {
   document.getElementById(`${tabName}-section`).classList.add('active');
 }
 
+// Data loading functions
+async function loadFeedback() {
+  try {
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    appState.feedback = data || [];
+    renderFeedback();
+  } catch (error) {
+    console.error('Error loading feedback:', error);
+    appState.feedback = [];
+    renderFeedback();
+  }
+}
+
+async function loadContributors() {
+  try {
+    const { data, error } = await supabase
+      .from('contributors')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    appState.contributors = data || [];
+    renderShowcase();
+  } catch (error) {
+    console.error('Error loading contributors:', error);
+    appState.contributors = [];
+    renderShowcase();
+  }
+}
+
 // Render functions
 function renderFeedback() {
   const feedbackList = document.getElementById('feedback-list');
@@ -124,21 +161,20 @@ function renderFeedback() {
   if (appState.feedback.length === 0) {
     feedbackList.innerHTML = `
       <div class="empty-state">
-        <p>Be the first to share your voice with the Sentient community</p>
+        <p>Be the first to share your voice with the Monad community</p>
       </div>
     `;
     return;
   }
   
   const feedbackHtml = appState.feedback
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     .map(item => {
       const tagClass = item.tag.toLowerCase().replace(/\s+/g, '-');
       return `
         <div class="feedback-item">
           <div class="feedback-header">
             <span class="feedback-tag ${tagClass}">${item.tag}</span>
-            <span class="timestamp">${formatRelativeTime(item.timestamp)}</span>
+            <span class="timestamp">${formatRelativeTime(item.created_at)}</span>
           </div>
           <div class="feedback-message">${item.message}</div>
         </div>
@@ -155,14 +191,13 @@ function renderShowcase() {
   if (appState.contributors.length === 0) {
     showcaseList.innerHTML = `
       <div class="empty-state">
-        <p>Be the first to showcase your contribution to Sentient AI</p>
+        <p>Be the first to showcase your contribution to Monad AI</p>
       </div>
     `;
     return;
   }
   
   const showcaseHtml = appState.contributors
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
     .map(item => {
       const handleUrl = `https://twitter.com/${item.x_handle}`;
       const projectLinkHtml = item.project_link 
@@ -175,7 +210,7 @@ function renderShowcase() {
             <div>
               <a href="${handleUrl}" target="_blank" rel="noopener noreferrer" class="showcase-handle">@${item.x_handle}</a>
             </div>
-            <span class="timestamp">${formatRelativeTime(item.timestamp)}</span>
+            <span class="timestamp">${formatRelativeTime(item.created_at)}</span>
           </div>
           <div class="contribution-text">${item.contribution}</div>
           ${projectLinkHtml}
@@ -220,30 +255,38 @@ async function handleFeedbackSubmit(e) {
   
   showLoading();
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  // Add to state
-  const feedback = {
-    id: generateId(),
-    message,
-    tag,
-    timestamp: new Date().toISOString()
-  };
-  
-  appState.feedback.unshift(feedback);
-  
-  hideLoading();
-  
-  // Reset form
-  form.reset();
-  updateCharacterCount('feedback-message', 'feedback-char-count');
-  
-  // Render updated list
-  renderFeedback();
-  
-  // Show success message
-  showSuccessModal('Success!', 'Your voice has been heard!');
+  try {
+    // Insert feedback into Supabase
+    const { data, error } = await supabase
+      .from('feedback')
+      .insert([
+        {
+          message: message,
+          tag: tag,
+          created_at: new Date().toISOString()
+        }
+      ])
+      .select();
+    
+    if (error) throw error;
+    
+    // Refresh feedback list
+    await loadFeedback();
+    
+    hideLoading();
+    
+    // Reset form
+    form.reset();
+    updateCharacterCount('feedback-message', 'feedback-char-count');
+    
+    // Show success message
+    showSuccessModal('Success!', 'Your voice has been heard!');
+    
+  } catch (error) {
+    hideLoading();
+    console.error('Error submitting feedback:', error);
+    showSuccessModal('Error', 'Failed to submit feedback. Please try again.');
+  }
 }
 
 async function handleShowcaseSubmit(e) {
@@ -286,31 +329,39 @@ async function handleShowcaseSubmit(e) {
   
   showLoading();
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  // Add to state
-  const contributor = {
-    id: generateId(),
-    x_handle: xHandle,
-    contribution,
-    project_link: projectLink || null,
-    timestamp: new Date().toISOString()
-  };
-  
-  appState.contributors.unshift(contributor);
-  
-  hideLoading();
-  
-  // Reset form
-  form.reset();
-  updateCharacterCount('contribution', 'contribution-char-count');
-  
-  // Render updated list
-  renderShowcase();
-  
-  // Show success message
-  showSuccessModal('Welcome!', 'Welcome to the community!');
+  try {
+    // Insert contributor into Supabase
+    const { data, error } = await supabase
+      .from('contributors')
+      .insert([
+        {
+          x_handle: xHandle,
+          contribution: contribution,
+          project_link: projectLink || null,
+          created_at: new Date().toISOString()
+        }
+      ])
+      .select();
+    
+    if (error) throw error;
+    
+    // Refresh contributors list
+    await loadContributors();
+    
+    hideLoading();
+    
+    // Reset form
+    form.reset();
+    updateCharacterCount('contribution', 'contribution-char-count');
+    
+    // Show success message
+    showSuccessModal('Welcome!', 'Welcome to the community!');
+    
+  } catch (error) {
+    hideLoading();
+    console.error('Error submitting contribution:', error);
+    showSuccessModal('Error', 'Failed to submit contribution. Please try again.');
+  }
 }
 
 // Character counting
@@ -330,7 +381,7 @@ function updateCharacterCount(textareaId, counterId) {
 }
 
 // Initialize application
-function initApp() {
+async function initApp() {
   // Tab navigation
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
@@ -372,44 +423,12 @@ function initApp() {
     }
   });
   
-  // Initial render
-  renderFeedback();
-  renderShowcase();
+  // Load data from Supabase
+  await loadFeedback();
+  await loadContributors();
   
   // Set default tab
   switchTab('feedback');
-  
-  // Add some sample data for demonstration
-  setTimeout(() => {
-    if (appState.feedback.length === 0 && appState.contributors.length === 0) {
-      // Add sample feedback
-      appState.feedback.push({
-        id: generateId(),
-        message: "Loving the direction of Monad AI! The community-driven approach is exactly what we need in the AI space.",
-        tag: "Recognition",
-        timestamp: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
-      });
-      
-      appState.feedback.push({
-        id: generateId(),
-        message: "What about implementing better privacy controls? I think this could be a game-changer for user adoption.",
-        tag: "Ideas",
-        timestamp: new Date(Date.now() - 7200000).toISOString() // 2 hours ago
-      });
-      
-      // Add sample contributor
-      appState.contributors.push({
-        id: generateId(),
-        x_handle: "ai_developer",
-        contribution: "I'd love to contribute to the open-source initiatives and help build better documentation for new developers joining the ecosystem.",
-        project_link: "https://github.com/ai-developer/monad-tools",
-        timestamp: new Date(Date.now() - 1800000).toISOString() // 30 minutes ago
-      });
-      
-      renderFeedback();
-      renderShowcase();
-    }
-  }, 2000);
 }
 
 // Start the application when DOM is loaded
