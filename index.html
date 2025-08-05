@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monad Voices - Where the Monad community speaks freely</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <h1 class="header-title">Monad Voices</h1>
+                    <p class="header-tagline">Where the Monad community speaks freely</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav">
+            <div class="container">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" data-tab="feedback">
+                        Community Feedback
+                    </button>
+                    <button class="nav-tab" data-tab="showcase">
+                        Contributor Showcase
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="container">
+                <!-- Community Feedback Section -->
+                <section id="feedback-section" class="section active">
+                    <div class="form-container">
+                        <form id="feedback-form" class="form">
+                            <div class="form-group">
+                                <label class="form-label" for="feedback-message">Your Feedback</label>
+                                <textarea 
+                                    id="feedback-message" 
+                                    class="form-control textarea"
+                                    placeholder="Share your thoughts about Monad AI and the community..."
+                                    rows="4"
+                                    maxlength="500"
+                                    required
+                                ></textarea>
+                                <div class="character-count">
+                                    <span id="feedback-char-count">0</span>/500
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="feedback-tag">Tag</label>
+                                <select id="feedback-tag" class="form-control" required>
+                                    <option value="">Select a tag...</option>
+                                    <option value="Recognition">Recognition</option>
+                                    <option value="Concerns">Concerns</option>
+                                    <option value="Ideas">Ideas</option>
+                                    <option value="Community Fun">Community Fun</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn--primary btn--full-width">
+                                Share Your Voice
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="content-section">
+                        <h3 class="section-title">Community Voices</h3>
+                        <div id="feedback-list" class="content-list">
+                            <div class="empty-state">
+                                <p>Be the first to share your voice with the Monad community</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Contributor Showcase Section -->
+                <section id="showcase-section" class="section">
+                    <div class="form-container">
+                        <form id="showcase-form" class="form">
+                            <div class="form-group">
+                                <label class="form-label" for="x-handle">Twitter/X Handle</label>
+                                <div class="input-prefix">
+                                    <span class="input-prefix-text">@</span>
+                                    <input 
+                                        type="text" 
+                                        id="x-handle" 
+                                        class="form-control input-with-prefix"
+                                        placeholder="your_handle"
+                                        required
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="contribution">Your Contribution</label>
+                                <textarea 
+                                    id="contribution" 
+                                    class="form-control textarea"
+                                    placeholder="How would you contribute to the Monad community?"
+                                    rows="4"
+                                    maxlength="500"
+                                    required
+                                ></textarea>
+                                <div class="character-count">
+                                    <span id="contribution-char-count">0</span>/500
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="project-link">Project Link (Optional)</label>
+                                <input 
+                                    type="url" 
+                                    id="project-link" 
+                                    class="form-control"
+                                    placeholder="https://your-project.com (optional)"
+                                >
+                            </div>
+
+                            <button type="submit" class="btn btn--primary btn--full-width">
+                                Join the Community
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="content-section">
+                        <h3 class="section-title">Community Contributors</h3>
+                        <div id="showcase-list" class="content-list">
+                            <div class="empty-state">
+                                <p>Be the first to showcase your contribution to Monad AI</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Success Message Modal -->
+        <div id="success-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="success-icon">✓</div>
+                    <h3 id="success-title" class="success-title"></h3>
+                    <p id="success-message" class="success-message"></p>
+                    <button id="success-close" class="btn btn--primary">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-spinner"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
