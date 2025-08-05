@@ -524,8 +524,94 @@ function updateCharacterCount(textareaId, counterId) {
   }
 }
 
+// Twitter OAuth functions
+function initTwitterAuth() {
+  const loginBtn = document.getElementById('twitter-login-btn');
+  const logoutBtn = document.getElementById('twitter-logout-btn');
+  const notConnectedDiv = document.getElementById('auth-not-connected');
+  const connectedDiv = document.getElementById('auth-connected');
+  const userAvatar = document.getElementById('user-avatar');
+  const userName = document.getElementById('user-name');
+  const userHandle = document.getElementById('user-handle');
+  const hiddenHandleInput = document.getElementById('x-handle');
+  
+  // Check if user is already authenticated
+  const storedUserData = getStoredUserData();
+  if (storedUserData) {
+    showConnectedUser(storedUserData);
+  }
+  
+  // Handle login button click
+  loginBtn.addEventListener('click', () => {
+    const authUrl = generateTwitterAuthUrl();
+    window.location.href = authUrl;
+  });
+  
+  // Handle logout button click
+  logoutBtn.addEventListener('click', () => {
+    clearStoredUserData();
+    showNotConnectedUser();
+  });
+  
+  // Handle callback from Twitter
+  if (isCallbackPage()) {
+    handleTwitterCallback();
+  }
+  
+  function showConnectedUser(userData) {
+    notConnectedDiv.style.display = 'none';
+    connectedDiv.style.display = 'block';
+    
+    userAvatar.src = userData.profile_image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiM5Q0EzQUYiLz4KPHN2ZyB4PSIxMiIgeT0iMTIiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAxMmMyLjIxIDAgNC0xLjc5IDQtNHMtMS43OS00LTQtNC00IDEuNzktNCA0IDEuNzkgNCA0IDR6bTAgMmMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHoiLz4KPC9zdmc+Cjwvc3ZnPgo=';
+    userName.textContent = userData.name || 'Twitter User';
+    userHandle.textContent = `@${userData.username}`;
+    hiddenHandleInput.value = userData.username;
+  }
+  
+  function showNotConnectedUser() {
+    notConnectedDiv.style.display = 'block';
+    connectedDiv.style.display = 'none';
+    hiddenHandleInput.value = '';
+  }
+}
+
+async function handleTwitterCallback() {
+  const code = getAuthCode();
+  const state = getState();
+  
+  if (!code || !state) {
+    console.error('Missing authorization code or state');
+    return;
+  }
+  
+  // In a real implementation, you would exchange the code for a token on your server
+  // For this demo, we'll simulate the process and use a mock user
+  try {
+    // Simulate getting user data from Twitter API
+    const mockUserData = {
+      id: '123456789',
+      name: 'Demo User',
+      username: 'demo_user',
+      profile_image_url: 'https://pbs.twimg.com/profile_images/1234567890/demo_400x400.jpg'
+    };
+    
+    // Store the user data
+    storeUserData(mockUserData);
+    
+    // Redirect back to the main page
+    window.location.href = window.location.origin + window.location.pathname;
+    
+  } catch (error) {
+    console.error('Error handling Twitter callback:', error);
+    alert('Authentication failed. Please try again.');
+  }
+}
+
 // Initialize application
 async function initApp() {
+  // Initialize Twitter authentication
+  initTwitterAuth();
+  
   // Tab navigation
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
