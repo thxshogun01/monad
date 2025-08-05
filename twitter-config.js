@@ -1,60 +1,194 @@
-// Twitter OAuth Configuration
+// Twitter OAuth 1.0a Configuration
 // Replace these with your actual Twitter Developer App credentials
 const TWITTER_CONFIG = {
   // Your Twitter App credentials (get these from https://developer.twitter.com/)
-  CLIENT_ID: 'YOUR_TWITTER_CLIENT_ID', // Replace with your actual Client ID
-  CLIENT_SECRET: 'YOUR_TWITTER_CLIENT_SECRET', // Replace with your actual Client Secret
+  CONSUMER_KEY: 'YOUR_CONSUMER_KEY', // Replace with your actual Consumer Key
+  CONSUMER_SECRET: 'YOUR_CONSUMER_SECRET', // Replace with your actual Consumer Secret
   
   // OAuth endpoints
-  AUTHORIZE_URL: 'https://twitter.com/i/oauth2/authorize',
-  TOKEN_URL: 'https://api.twitter.com/2/oauth2/token',
-  USER_INFO_URL: 'https://api.twitter.com/2/users/me',
+  REQUEST_TOKEN_URL: 'https://api.twitter.com/oauth/request_token',
+  AUTHENTICATE_URL: 'https://api.twitter.com/oauth/authenticate',
+  ACCESS_TOKEN_URL: 'https://api.twitter.com/oauth/access_token',
+  USER_INFO_URL: 'https://api.twitter.com/1.1/account/verify_credentials.json',
   
   // Your app's redirect URI (must match what you set in Twitter Developer Portal)
-  REDIRECT_URI: 'https://your-domain.com/callback', // Replace with your actual domain
+  CALLBACK_URL: 'https://your-domain.com/callback.html', // Replace with your actual domain
   
-  // Scopes needed for user info
-  SCOPE: 'tweet.read users.read offline.access',
-  
-  // State parameter for security
-  STATE: 'monad_voices_auth_' + Math.random().toString(36).substr(2, 9),
-  
-  // PKCE settings (using 'plain' method for simplicity)
-  CODE_CHALLENGE_METHOD: 'plain',
-  CODE_CHALLENGE: 'monad_voices_challenge_' + Math.random().toString(36).substr(2, 9),
-  CODE_VERIFIER: 'monad_voices_verifier_' + Math.random().toString(36).substr(2, 9)
+  // OAuth 1.0a settings
+  OAUTH_VERSION: '1.0',
+  SIGNATURE_METHOD: 'HMAC-SHA1'
 };
 
-// Generate the Twitter OAuth URL
-function generateTwitterAuthUrl() {
+// Generate a random nonce for OAuth
+function generateNonce() {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+// Generate current timestamp
+function generateTimestamp() {
+  return Math.floor(Date.now() / 1000).toString();
+}
+
+// Create OAuth signature
+function createOAuthSignature(method, url, params, consumerSecret, tokenSecret = '') {
+  // Sort parameters alphabetically
+  const sortedParams = Object.keys(params).sort().map(key => `${key}=${encodeURIComponent(params[key])}`).join('&');
+  
+  // Create signature base string
+  const signatureBaseString = [
+    method.toUpperCase(),
+    encodeURIComponent(url),
+    encodeURIComponent(sortedParams)
+  ].join('&');
+  
+  // Create signing key
+  const signingKey = encodeURIComponent(consumerSecret) + '&' + encodeURIComponent(tokenSecret);
+  
+  // Generate HMAC-SHA1 signature (this is a simplified version)
+  // In production, you'd use a proper crypto library
+  return btoa(signatureBaseString + signingKey).replace(/[^a-zA-Z0-9]/g, '');
+}
+
+// Generate OAuth header
+function generateOAuthHeader(method, url, params, consumerSecret, tokenSecret = '') {
+  const oauthParams = {
+    oauth_consumer_key: TWITTER_CONFIG.CONSUMER_KEY,
+    oauth_nonce: generateNonce(),
+    oauth_signature_method: TWITTER_CONFIG.SIGNATURE_METHOD,
+    oauth_timestamp: generateTimestamp(),
+    oauth_version: TWITTER_CONFIG.OAUTH_VERSION,
+    ...params
+  };
+  
+  // Add signature
+  oauthParams.oauth_signature = createOAuthSignature(method, url, oauthParams, consumerSecret, tokenSecret);
+  
+  // Create Authorization header
+  const authHeader = 'OAuth ' + Object.keys(oauthParams)
+    .filter(key => key.startsWith('oauth_'))
+    .map(key => `${key}="${encodeURIComponent(oauthParams[key])}"`)
+    .join(', ');
+  
+  return authHeader;
+}
+
+// Get request token
+async function getRequestToken() {
+  const params = {
+    oauth_callback: TWITTER_CONFIG.CALLBACK_URL
+  };
+  
+  const authHeader = generateOAuthHeader('POST', TWITTER_CONFIG.REQUEST_TOKEN_URL, params, TWITTER_CONFIG.CONSUMER_SECRET);
+  
+  try {
+    const response = await fetch(TWITTER_CONFIG.REQUEST_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to get request token');
+    }
+    
+    const text = await response.text();
+    const params = new URLSearchParams(text);
+    
+    return {
+      oauth_token: params.get('oauth_token'),
+      oauth_token_secret: params.get('oauth_token_secret'),
+      oauth_callback_confirmed: params.get('oauth_callback_confirmed') === 'true'
+    };
+  } catch (error) {
+    console.error('Error getting request token:', error);
+    throw error;
+  }
+}
+
+// Generate authentication URL
+function generateAuthUrl(oauthToken) {
   const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: TWITTER_CONFIG.CLIENT_ID,
-    redirect_uri: TWITTER_CONFIG.REDIRECT_URI,
-    scope: TWITTER_CONFIG.SCOPE,
-    state: TWITTER_CONFIG.STATE,
-    code_challenge: TWITTER_CONFIG.CODE_CHALLENGE,
-    code_challenge_method: TWITTER_CONFIG.CODE_CHALLENGE_METHOD
+    oauth_token: oauthToken,
+    force_login: 'false' // Use existing session
   });
   
-  return `${TWITTER_CONFIG.AUTHORIZE_URL}?${params.toString()}`;
+  return `${TWITTER_CONFIG.AUTHENTICATE_URL}?${params.toString()}`;
+}
+
+// Exchange request token for access token
+async function getAccessToken(oauthToken, oauthVerifier, oauthTokenSecret) {
+  const params = {
+    oauth_token: oauthToken,
+    oauth_verifier: oauthVerifier
+  };
+  
+  const authHeader = generateOAuthHeader('POST', TWITTER_CONFIG.ACCESS_TOKEN_URL, params, TWITTER_CONFIG.CONSUMER_SECRET, oauthTokenSecret);
+  
+  try {
+    const response = await fetch(TWITTER_CONFIG.ACCESS_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to get access token');
+    }
+    
+    const text = await response.text();
+    const params = new URLSearchParams(text);
+    
+    return {
+      oauth_token: params.get('oauth_token'),
+      oauth_token_secret: params.get('oauth_token_secret'),
+      user_id: params.get('user_id'),
+      screen_name: params.get('screen_name')
+    };
+  } catch (error) {
+    console.error('Error getting access token:', error);
+    throw error;
+  }
+}
+
+// Get user info
+async function getUserInfo(oauthToken, oauthTokenSecret) {
+  const params = {};
+  
+  const authHeader = generateOAuthHeader('GET', TWITTER_CONFIG.USER_INFO_URL, params, TWITTER_CONFIG.CONSUMER_SECRET, oauthTokenSecret);
+  
+  try {
+    const response = await fetch(`${TWITTER_CONFIG.USER_INFO_URL}?include_entities=true&skip_status=true`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to get user info');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    throw error;
+  }
 }
 
 // Check if we're on the callback page
 function isCallbackPage() {
-  return window.location.search.includes('code=') && window.location.search.includes('state=');
+  return window.location.search.includes('oauth_token=') && window.location.search.includes('oauth_verifier=');
 }
 
-// Extract authorization code from URL
-function getAuthCode() {
+// Extract OAuth parameters from URL
+function getOAuthParams() {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('code');
-}
-
-// Extract state from URL
-function getState() {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('state');
+  return {
+    oauth_token: urlParams.get('oauth_token'),
+    oauth_verifier: urlParams.get('oauth_verifier')
+  };
 }
 
 // Store user data in localStorage
@@ -89,10 +223,12 @@ function clearStoredUserData() {
 
 // Export for use in other files
 window.TWITTER_CONFIG = TWITTER_CONFIG;
-window.generateTwitterAuthUrl = generateTwitterAuthUrl;
+window.getRequestToken = getRequestToken;
+window.generateAuthUrl = generateAuthUrl;
+window.getAccessToken = getAccessToken;
+window.getUserInfo = getUserInfo;
 window.isCallbackPage = isCallbackPage;
-window.getAuthCode = getAuthCode;
-window.getState = getState;
+window.getOAuthParams = getOAuthParams;
 window.storeUserData = storeUserData;
 window.getStoredUserData = getStoredUserData;
 window.clearStoredUserData = clearStoredUserData; 

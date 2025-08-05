@@ -74,41 +74,51 @@
 
     <script src="twitter-config.js"></script>
     <script>
-        // Handle the OAuth callback
+        // Handle the OAuth 1.0a callback
         async function handleCallback() {
             const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
+            const oauth_token = urlParams.get('oauth_token');
+            const oauth_verifier = urlParams.get('oauth_verifier');
+            const denied = urlParams.get('denied');
             
-            if (error) {
-                showError('Authentication was cancelled or failed.');
+            if (denied) {
+                showError('Authentication was cancelled by the user.');
                 return;
             }
             
-            if (!code || !state) {
-                showError('Missing authorization parameters.');
+            if (!oauth_token || !oauth_verifier) {
+                showError('Missing OAuth parameters.');
                 return;
             }
             
             try {
-                // In a real implementation, you would send the code to your server
-                // to exchange it for an access token and fetch user data
+                // Get the stored token secret
+                const oauthTokenSecret = sessionStorage.getItem('oauth_token_secret');
+                if (!oauthTokenSecret) {
+                    throw new Error('No token secret found');
+                }
                 
-                // For demo purposes, we'll simulate the process
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+                // Exchange request token for access token
+                const accessToken = await getAccessToken(oauth_token, oauth_verifier, oauthTokenSecret);
                 
-                // Mock user data (replace with real API call)
-                const mockUserData = {
-                    id: '123456789',
-                    name: 'Demo User',
-                    username: 'demo_user',
-                    profile_image_url: 'https://pbs.twimg.com/profile_images/1234567890/demo_400x400.jpg'
+                // Get user info
+                const userInfo = await getUserInfo(accessToken.oauth_token, accessToken.oauth_token_secret);
+                
+                // Combine the data
+                const userData = {
+                    id: accessToken.user_id,
+                    screen_name: accessToken.screen_name,
+                    name: userInfo.name,
+                    profile_image_url: userInfo.profile_image_url_https,
+                    ...userInfo
                 };
                 
                 // Store user data
-                localStorage.setItem('twitter_user_data', JSON.stringify(mockUserData));
+                localStorage.setItem('twitter_user_data', JSON.stringify(userData));
                 localStorage.setItem('twitter_auth_time', Date.now().toString());
+                
+                // Clean up session storage
+                sessionStorage.removeItem('oauth_token_secret');
                 
                 // Redirect back to main page
                 window.location.href = 'index.html';

@@ -524,7 +524,7 @@ function updateCharacterCount(textareaId, counterId) {
   }
 }
 
-// Twitter OAuth functions
+// Twitter OAuth 1.0a functions
 function initTwitterAuth() {
   const loginBtn = document.getElementById('twitter-login-btn');
   const logoutBtn = document.getElementById('twitter-logout-btn');
@@ -542,14 +542,35 @@ function initTwitterAuth() {
   }
   
   // Handle login button click
-  loginBtn.addEventListener('click', () => {
-    const authUrl = generateTwitterAuthUrl();
-    window.location.href = authUrl;
+  loginBtn.addEventListener('click', async () => {
+    try {
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Getting token...';
+      
+      // Get request token
+      const requestToken = await getRequestToken();
+      
+      // Generate auth URL with force_login=false to use existing session
+      const authUrl = generateAuthUrl(requestToken.oauth_token);
+      
+      // Store request token secret for later use
+      sessionStorage.setItem('oauth_token_secret', requestToken.oauth_token_secret);
+      
+      // Redirect to Twitter
+      window.location.href = authUrl;
+      
+    } catch (error) {
+      console.error('Error starting OAuth flow:', error);
+      alert('Failed to start authentication. Please try again.');
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = '<svg class="twitter-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>🔒 Login with X';
+    }
   });
   
   // Handle logout button click
   logoutBtn.addEventListener('click', () => {
     clearStoredUserData();
+    sessionStorage.removeItem('oauth_token_secret');
     showNotConnectedUser();
   });
   
@@ -564,8 +585,8 @@ function initTwitterAuth() {
     
     userAvatar.src = userData.profile_image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiM5Q0EzQUYiLz4KPHN2ZyB4PSIxMiIgeT0iMTIiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+CjxwYXRoIGQ9Ik0xMiAxMmMyLjIxIDAgNC0xLjc5IDQtNHMtMS43OS00LTQtNC00IDEuNzktNCA0IDEuNzkgNCA0IDR6bTAgMmMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHoiLz4KPC9zdmc+Cjwvc3ZnPgo=';
     userName.textContent = userData.name || 'Twitter User';
-    userHandle.textContent = `@${userData.username}`;
-    hiddenHandleInput.value = userData.username;
+    userHandle.textContent = `@${userData.screen_name || userData.username}`;
+    hiddenHandleInput.value = userData.screen_name || userData.username;
   }
   
   function showNotConnectedUser() {
@@ -576,27 +597,40 @@ function initTwitterAuth() {
 }
 
 async function handleTwitterCallback() {
-  const code = getAuthCode();
-  const state = getState();
+  const { oauth_token, oauth_verifier } = getOAuthParams();
   
-  if (!code || !state) {
-    console.error('Missing authorization code or state');
+  if (!oauth_token || !oauth_verifier) {
+    console.error('Missing OAuth parameters');
     return;
   }
   
-  // In a real implementation, you would exchange the code for a token on your server
-  // For this demo, we'll simulate the process and use a mock user
   try {
-    // Simulate getting user data from Twitter API
-    const mockUserData = {
-      id: '123456789',
-      name: 'Demo User',
-      username: 'demo_user',
-      profile_image_url: 'https://pbs.twimg.com/profile_images/1234567890/demo_400x400.jpg'
+    // Get the stored token secret
+    const oauthTokenSecret = sessionStorage.getItem('oauth_token_secret');
+    if (!oauthTokenSecret) {
+      throw new Error('No token secret found');
+    }
+    
+    // Exchange request token for access token
+    const accessToken = await getAccessToken(oauth_token, oauth_verifier, oauthTokenSecret);
+    
+    // Get user info
+    const userInfo = await getUserInfo(accessToken.oauth_token, accessToken.oauth_token_secret);
+    
+    // Combine the data
+    const userData = {
+      id: accessToken.user_id,
+      screen_name: accessToken.screen_name,
+      name: userInfo.name,
+      profile_image_url: userInfo.profile_image_url_https,
+      ...userInfo
     };
     
     // Store the user data
-    storeUserData(mockUserData);
+    storeUserData(userData);
+    
+    // Clean up session storage
+    sessionStorage.removeItem('oauth_token_secret');
     
     // Redirect back to the main page
     window.location.href = window.location.origin + window.location.pathname;
